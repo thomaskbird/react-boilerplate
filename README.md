@@ -1,6 +1,4 @@
-# React Boilerplate
-
-This repo utilizes webpack for build and development server. It combines sass for css, typescript and react for a seamless easy to use starting point for any single page app.
+# PDS Web App
 
 ## Table of Contents
 

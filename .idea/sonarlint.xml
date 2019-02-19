@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SonarLintProjectSettings">
+    <option name="fileExclusions">
+      <list>
+        <option value="DIRECTORY:coverage" />
+        <option value="DIRECTORY:dist" />
+        <option value="DIRECTORY:src/generated-code" />
+      </list>
+    </option>
+  </component>
+</project>

@@ -1,22 +1,36 @@
 /**
- * Entry point for the React & Typescript Boilerplate
+ * Entry point for the PDS Web App
  * @module
  */
 import "./index.scss";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import {BrowserRouter} from "react-router-dom";
-import {App} from "./components/App";
+import { BrowserRouter } from "react-router-dom";
+import { Provider } from "react-redux";
+
+import { Root } from "src/components/Root";
 
 /**
- * Creates the entire top-level structure of the application, using the specified root component.
+ * Web App root path.
+ * If available, the web app exists in a sub directory on the server.
+ */
+const webAppRootPath =
+    process.env.WEB_APP_ROOT_PATH != null
+        ? `/${process.env.WEB_APP_ROOT_PATH}`
+        : "";
+
+/**
+ * Creates the Root component
+ * @returns Root component
  */
 function createAppElement(): JSX.Element {
-  return (
-    <BrowserRouter>
-      <App/>
-    </BrowserRouter>
-  );
+    return (
+        <Provider>
+            <BrowserRouter basename={webAppRootPath}>
+                <Root />
+            </BrowserRouter>
+        </Provider>
+    );
 }
 
 ReactDOM.render(createAppElement(), document.getElementById("root"));

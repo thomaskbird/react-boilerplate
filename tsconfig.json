@@ -12,9 +12,11 @@
         "target": "es5",
         "jsx": "react",
         "lib": ["DOM", "DOM.Iterable", "ES6", "ScriptHost"],
-        "allowSyntheticDefaultImports": false,
-        "forceConsistentCasingInFileNames": true
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true
     },
-    "include": ["./src/**/*", "./*"],
+    "include": ["./src/**/*", "./.storybook/**/*", "./*"],
     "exclude": []
 }

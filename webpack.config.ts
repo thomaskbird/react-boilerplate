@@ -1,10 +1,11 @@
-import * as webpack from "webpack";
-import * as HtmlWebpackPlugin from "html-webpack-plugin";
+import HtmlWebpackPlugin from "html-webpack-plugin";
 import * as path from "path";
-import * as ExtractTextPlugin from "extract-text-webpack-plugin";
-import * as CopyWebpackPlugin from "copy-webpack-plugin";
-import * as autoprefixer from "autoprefixer";
-import { JSONObject } from "src/json";
+import CopyWebpackPlugin from "copy-webpack-plugin";
+import autoprefixer from "autoprefixer";
+import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
+import MiniCssExtractPlugin from "mini-css-extract-plugin";
+import OptimizeCSSAssetsPlugin from "optimize-css-assets-webpack-plugin";
+import TerserWebpackPlugin from "terser-webpack-plugin";
 
 /**
  * Interface for supported "env" properties, which come from "--env.[propname]=[value]" command-line arguments.
@@ -32,10 +33,16 @@ interface Env {
     apiBaseUrl?: string;
 
     /**
-     * Base URL for Vehicle API requests.
-     * If present, this overrides the default URL from the swagger document for this API.
+     * The relative path from root of the static web server's directory to the
+     * directory containing this web application.
+     *
+     * Only used if {@link #prod} is true and it is necessary to deploy the
+     * web app in a sub-directory in a production environment.
+     *
+     * This path must not contain any leading or trailing slashes and must be
+     * empty/undefined if the web app is served from the root of the static web server.
      */
-    vehicleApiBaseUrl?: string;
+    webAppRootPath?: string;
 
     /**
      * Treated as a boolean: any non-empty value == true.
@@ -79,14 +86,21 @@ const URL_PATHS = {
     /**
      * Path to location of public static files to be served.
      */
-    publicStatic: "/public"
+    publicStatic: "public"
 };
+
+/**
+ * List of names of NPM modules that need to be transpiled.
+ * Some NPM packages are distributed as ES modules only (not ES5 CommonJS modules),
+ * so they must be transpiled.
+ */
+const NODE_MODULES_TO_TRANSPILE = ["query-string"];
 
 /**
  * config for webpack-dev-server
  */
 const DEV_SERVER = {
-    port: 8000,
+    port: 8075,
     hot: true,
     hotOnly: false,
     overlay: true,
@@ -100,9 +114,12 @@ export default (env: Env = {}) => {
     const isDev = !env.prod;
     const isProd = !isDev;
     const isSourceMap = isDev || !!env.sourceMap;
-    const packageJson: JSONObject = require(PATHS.root + "/package.json");
+    // const packageJson: JSONObject = require(PATHS.root + "/package.json");
+    const webAppRootPath =
+        !isDev && env.webAppRootPath ? `/${env.webAppRootPath}/` : "/";
 
     return {
+        mode: isDev ? "development" : "production",
         cache: true,
         devtool: isSourceMap
             ? isDev
@@ -111,14 +128,11 @@ export default (env: Env = {}) => {
             : false,
         devServer: DEV_SERVER,
         context: PATHS.root,
-        entry: [
-            ...(isDev ? ["react-hot-loader/patch"] : []),
-            isSandbox ? "./src/sandbox.tsx" : "./src/index.tsx"
-        ],
+        entry: [isSandbox ? "./src/sandbox.tsx" : "./src/index.tsx"],
         output: {
             filename: isDev ? "[name].js" : "[name].[chunkhash].js",
             path: PATHS.dist,
-            publicPath: "/"
+            publicPath: webAppRootPath
         },
         resolve: {
             alias: {
@@ -126,38 +140,59 @@ export default (env: Env = {}) => {
             },
             extensions: [".ts", ".tsx", ".js", ".jsx", ".json", ".scss"]
         },
+        optimization: {
+            minimizer: [
+                new TerserWebpackPlugin({
+                    cache: true,
+                    parallel: true,
+                    sourceMap: isSourceMap
+                }),
+                new OptimizeCSSAssetsPlugin({})
+            ]
+        },
         module: {
             rules: [
                 // CSS/SCSS
                 {
                     test: /\.s?css$/,
-                    use: ExtractTextPlugin.extract({
-                        fallback: "style-loader",
-                        use: [
-                            {
-                                loader: "css-loader",
-                                options: {
-                                    sourceMap: isSourceMap,
-                                    importLoaders: 2,
-                                    minimize: true
-                                }
-                            },
-                            {
-                                loader: "postcss-loader",
-                                options: {
-                                    sourceMap: isSourceMap,
-                                    ident: "postcss",
-                                    plugins: [autoprefixer()]
-                                }
-                            },
-                            {
-                                loader: "sass-loader",
-                                options: {
-                                    sourceMap: isSourceMap
-                                }
+                    use: [
+                        isDev ? "style-loader" : MiniCssExtractPlugin.loader,
+                        {
+                            loader: "css-loader",
+                            options: {
+                                sourceMap: isSourceMap
                             }
-                        ]
-                    })
+                        },
+                        {
+                            loader: "postcss-loader",
+                            options: {
+                                sourceMap: isSourceMap,
+                                ident: "postcss",
+                                plugins: [autoprefixer()]
+                            }
+                        },
+                        {
+                            loader: "sass-loader",
+                            options: {
+                                sourceMap: isSourceMap
+                            }
+                        },
+                        {
+                            loader: "sass-resources-loader",
+                            options: {
+                                resources: [
+                                    path.resolve(
+                                        __dirname,
+                                        "node_modules/@blueprintjs/core/lib/scss/variables.scss"
+                                    ),
+                                    path.resolve(
+                                        __dirname,
+                                        "src/styles/base-variables.scss"
+                                    )
+                                ]
+                            }
+                        }
+                    ]
                 },
 
                 // image/font files included by CSS
@@ -173,96 +208,87 @@ export default (env: Env = {}) => {
                     ]
                 },
 
-                // typescript
+                // typescript/javascript
                 {
-                    test: /\.tsx?$/,
-                    include: PATHS.src,
+                    test: /\.[tj]sx?$/,
+                    include: [
+                        PATHS.src,
+                        ...NODE_MODULES_TO_TRANSPILE.map(
+                            (moduleName) => `${PATHS.nodeModules}/${moduleName}`
+                        )
+                    ],
                     use: [
-                        ...(isDev ? ["react-hot-loader/webpack"] : []),
+                        ...(isDev
+                            ? [
+                                  // cache-loader/thread-loader combo is supposed to optimize rebuilds.
+                                  // As suggested by ts-loader's README
+                                  { loader: "cache-loader" },
+                                  {
+                                      loader: "thread-loader",
+                                      options: {
+                                          // there should be 1 cpu for the fork-ts-checker-webpack-plugin
+                                          workers:
+                                              require("os").cpus().length - 1
+                                      }
+                                  }
+                              ]
+                            : []),
                         {
-                            loader: "awesome-typescript-loader",
+                            // Use Babel after the TypeScript compiler to get some
+                            // extra functionality not available in plain TypeScript/Webpack
+                            loader: "babel-loader",
                             options: {
-                                transpileOnly: true,
+                                plugins: ["macros"]
+                            }
+                        },
+                        {
+                            loader: "ts-loader",
+                            options: {
+                                // happyPackMode = no compiler checks and compatible with thread-loader.
+                                // fork-ts-checker-webpack-plugin will separately run compiler checks in dev mode.
+                                happyPackMode: isDev,
                                 compilerOptions: {
+                                    // preserve original "esNext" style imports so that Babel
+                                    // can process imports correctly for the purpose of
+                                    // babel-plugin-macros
+                                    module: "esNext",
                                     sourceMap: isSourceMap,
-                                    target: "es5",
                                     isolatedModules: true,
                                     noEmitOnError: false
                                 }
                             }
                         }
                     ]
-                },
-
-                // json
-                {
-                    test: /\.json$/,
-                    include: PATHS.src,
-                    use: ["json-loader"]
                 }
             ]
         },
         plugins: [
             new HtmlWebpackPlugin({
-                title: isSandbox ? "The Sandbox" : "PDS Web App",
+                title: isSandbox
+                    ? "The Sandbox"
+                    : "React Typescript Boilerplate",
                 template: PATHS.src + "/index.ejs",
-                publicPath: URL_PATHS.publicStatic
+                publicPath: webAppRootPath + URL_PATHS.publicStatic
             }),
-            new ExtractTextPlugin({
-                filename: "[name].[hash].css",
-                allChunks: true,
-                disable: isDev
+            new MiniCssExtractPlugin({
+                filename: isDev ? "[name].css" : "[name].[hash].css",
+                chunkFilename: isDev ? "[id].css" : "[id].[hash].css"
             }),
-            new webpack.DefinePlugin({
-                "process.env": {
-                    NODE_ENV: JSON.stringify(
-                        isDev ? "development" : "production"
-                    ),
-                    API_BASE_URL: JSON.stringify(env.apiBaseUrl),
-                    VEHICLE_API_BASE_URL: JSON.stringify(env.vehicleApiBaseUrl),
-                    AG_GRID_LICENSE_KEY: JSON.stringify(
-                        "Control-Tec_PDS_Web_App_4Devs9_March_2019__" +
-                            "MTU1MjA4OTYwMDAwMA==137d993909f4bf81fd198c6c37ee3d03"
-                    ),
-                    WEB_APP_VERSION: JSON.stringify(packageJson.version),
-                    WEB_APP_COPYRIGHT_YEAR: JSON.stringify(String(2017))
-                }
-            }),
-            new webpack.optimize.CommonsChunkPlugin({
-                name: "vendor",
-                minChunks: (module) =>
-                    module.context &&
-                    module.context.indexOf("node_modules") !== -1
-            }),
-            new webpack.optimize.CommonsChunkPlugin({
-                name: "manifest"
-            }),
-            ...(isDev
-                ? [
-                      new webpack.HotModuleReplacementPlugin({
-                          // NOTE: cannot use multiStep until this bug is fixed:
-                          //       https://github.com/jantimon/html-webpack-plugin/issues/716
-                          // multiStep: true // better performance with many files
-                      }),
-                      new webpack.NamedModulesPlugin()
-                  ]
-                : []),
             ...(isProd
                 ? [
                       new CopyWebpackPlugin([
                           {
                               from: PATHS.publicStatic,
-                              to: PATHS.dist + URL_PATHS.publicStatic
+                              to: `${PATHS.dist}/${URL_PATHS.publicStatic}`
                           }
-                      ]),
-                      new webpack.optimize.UglifyJsPlugin({
-                          beautify: false,
-                          compress: true,
-                          comments: false,
-                          sourceMap: isSourceMap
-                      })
+                      ])
                   ]
-                : [])
+                : [
+                      new ForkTsCheckerWebpackPlugin({
+                          checkSyntacticErrors: true,
+                          formatter: "codeframe"
+                      })
+                  ])
         ]
     };
 };

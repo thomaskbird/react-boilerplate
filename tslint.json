@@ -1,8 +1,15 @@
 {
+    "linterOptions": {
+        "exclude": [
+            // Prevent tslint from trying to process imported JSON modules
+            // https://github.com/google/ts-style/issues/172
+            "*.json",
+            "**/*.json"
+        ]
+    },
     "extends": [
         "tslint:recommended",
         "tslint-react",
-        "tslint-blueprint",
         "tslint-eslint-rules",
         "tslint-config-prettier"
     ],
@@ -110,6 +117,7 @@
         "jsx-no-multiline-js": false,
         "jsx-no-lambda": false,
         "no-untyped-null-initializer": true,
+        "no-unnecessary-safe-invoke": true,
         "no-non-null-assertion": false,
         "variable-name": [
             true,
