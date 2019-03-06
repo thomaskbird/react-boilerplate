@@ -75,7 +75,6 @@ line" and set "Strip trailing spaces on Save" to "All".
 -   **.prettierignore** - Hide files from Prettier so that they are not processed.
 -   **.prettierrc.json** - Prettier configuration file.
 -   **.sass-lint.yml** - Sass-lint configuration file.
--   **ak-coverity.it.control-tec.com** - Auth key for Coverity. Necessary to run Coverity on Bamboo.
 -   **jest.setup.ts** - Test environment initialization. [Scripts](docs/npm-scripts.md).
 -   **package.json** - Defines what NPM modules our project depends on, and defines some useful [scripts](docs/npm-scripts.md).
 -   **package-lock.json** - NPM package lock file that ensures the same version of every node module is consistently
@@ -105,11 +104,6 @@ To quickly run lint, run the [lint](docs/npm-scripts.md#lint) script. Some issue
 ### Unit Tests
 
 Run [test](docs/npm-scripts.md#test) and ensure all unit tests are passing.
-
-### SonarQube Static Code Analysis
-
-In order to run Static Code Analysis via SonarQube and publish the issues and the coverage metrics to
-[SonarQube](https://sonarqube.control-tec.com), run the `static-analysis-sonarqube` npm task
 
 ## <a name="bem"/>BEM Methodology for CSS
 
