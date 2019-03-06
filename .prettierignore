@@ -2,5 +2,3 @@ jest.json
 package.json
 package-lock.json
 src/generated-code
-**/*.DS_Store
-.idea
