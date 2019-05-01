@@ -25,11 +25,9 @@ const webAppRootPath =
  */
 function createAppElement(): JSX.Element {
     return (
-        <Provider>
-            <BrowserRouter basename={webAppRootPath}>
-                <Root />
-            </BrowserRouter>
-        </Provider>
+        <BrowserRouter basename={webAppRootPath}>
+            <Root />
+        </BrowserRouter>
     );
 }
 
