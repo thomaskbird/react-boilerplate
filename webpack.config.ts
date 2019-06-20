@@ -183,11 +183,11 @@ export default (env: Env = {}) => {
                                 resources: [
                                     path.resolve(
                                         __dirname,
-                                        "node_modules/@blueprintjs/core/lib/scss/variables.scss"
+                                        "src/components/sass/variables.scss"
                                     ),
                                     path.resolve(
                                         __dirname,
-                                        "src/styles/base-variables.scss"
+                                        "src/components/sass/mixins.scss"
                                     )
                                 ]
                             }
