@@ -94,7 +94,7 @@
     "webpack-env": "0.8.0"
   },
   "dependencies": {
-    "axios": "0.18.0",
+    "axios": ">=0.19.0",
     "lodash": "4.17.11",
     "moment": "2.24.0",
     "moment-timezone": "0.5.23",

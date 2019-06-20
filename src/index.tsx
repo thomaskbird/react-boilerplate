@@ -7,6 +7,17 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { BrowserRouter } from "react-router-dom";
 import { Provider } from "react-redux";
+import axios from "axios";
+
+const location = window.location;
+const protocol = location.protocol;
+const host = location.hostname;
+
+const env = host === "localhost" ? `dev` : `api`;
+
+export const api = axios.create({
+    baseURL: `ENTER_BASE_API_URL_HERE`
+});
 
 import { Root } from "src/components/Root";
 
