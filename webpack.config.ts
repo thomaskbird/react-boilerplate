@@ -76,7 +76,11 @@ const PATHS = {
     /**
      * Build output folder.
      */
-    dist: path.resolve(__dirname, "./dist")
+    dist: path.resolve(__dirname, "./dist"),
+    /**
+     * Build assets for dist dir
+     */
+    distFiles: path.resolve(__dirname, './dist-files')
 };
 
 /**
@@ -280,6 +284,10 @@ export default (env: Env = {}) => {
                           {
                               from: PATHS.publicStatic,
                               to: `${PATHS.dist}/${URL_PATHS.publicStatic}`
+                          },
+                          {
+                              from: PATHS.distFiles,
+                              to: PATHS.dist
                           }
                       ])
                   ]
